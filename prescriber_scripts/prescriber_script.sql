@@ -48,9 +48,29 @@ LIMIT 5;
 
 -- c. **Challenge Question:** Are there any specialties that appear in the prescriber table that have no associated prescriptions in the prescription table?
 
---SELECT prescriber.speciatly_description, 
+SELECT prescriber.specialty_description, SUM(prescription.total_claim_count) AS total_claims
+FROM prescriber
+LEFT JOIN prescription
+ON prescriber.npi=prescription.npi
+GROUP BY prescriber.specialty_description
+HAVING SUM(prescription.total_claim_count) IS NULL
+ORDER BY total_claims;
+
+--ANSWER "Marriage & Family Therapist",
+-- "Contractor",
+-- "Physical Therapist in Private Practice",
+-- "Developmental Therapist", "Chiropractic",
+-- "Occupational Therapist in Private Practice",
+-- "Licensed Practical Nurse",
+-- "Midwife", "Medical Genetics",
+-- "Physical Therapy Assistant",
+-- "Ambulatory Surgical Center", and
+-- "Undefined Physician type"
 
 -- d. **Difficult Bonus:** *Do not attempt until you have solved all other problems!* For each specialty, report the percentage of total claims by that specialty which are for opioids. Which specialties have a high percentage of opioids?
+
+-- WITH claims AS
+--  (SELECT prescriber.);
 
 --3. a. Which drug (generic_name) had the highest total drug cost?
 
@@ -159,7 +179,7 @@ ON prescription.drug_name = drug.drug_name
 WHERE total_claim_count >= '3000' 
 ORDER BY total_claim_count DESC;
 
---ANSWER "OXYCODONE HCL" and "OXYCODONE HCL" are opioids
+--ANSWER "OXYCODONE HCL" and "HYDROCODONE-ACETAMINOPHEN" are opioids
 
 -- c. Add another column to you answer from the previous part which gives the prescriber first and last name associated with each row.
 
@@ -187,15 +207,59 @@ WHERE specialty_description iLIKE 'Pain Management'
 
 -- b. Next, report the number of claims per drug per prescriber. Be sure to include all combinations, whether or not the prescriber had any claims. You should report the npi, the drug name, and the number of claims (total_claim_count).
 
-SELECT prescriber.npi, drug.drug_name, SUM(prescription.total_claim_count)
+-- SELECT prescriber.npi, drug.drug_name, 
+-- (SELECT SUM(prescription.total_claim_count) FROM prescription
+-- WHERE prescriber.npi = prescription.npi
+-- AND prescription.drug_name = drug.drug_name) AS sum_total_claims
+-- FROM prescriber
+-- CROSS JOIN drug
+-- LEFT JOIN prescription
+-- ON prescriber.npi = prescription.npi
+-- WHERE prescriber.specialty_description iLIKE 'Pain Management'
+-- 	AND prescriber.nppes_provider_city iLIKE 'NASHVILLE'
+-- 	AND drug.opioid_drug_flag = 'Y'
+-- GROUP BY prescriber.npi, drug.drug_name
+-- ORDER BY prescriber.npi; 
+
+-- SELECT
+-- 	prescriber.npi,
+-- 	drug.drug_name,
+-- 	(SELECT
+-- 	 	SUM(prescription.total_claim_count)
+-- 	 FROM prescription
+-- 	 WHERE prescriber.npi = prescription.npi
+-- 	 AND prescription.drug_name = drug.drug_name) as total_claims
+-- FROM prescriber
+-- CROSS JOIN drug 
+-- INNER JOIN prescription
+-- using (npi)
+-- WHERE 
+-- 	prescriber.specialty_description = 'Pain Management' AND
+-- 	prescriber.nppes_provider_city = 'NASHVILLE' AND
+-- 	drug.opioid_drug_flag = 'Y'
+-- GROUP BY prescriber.npi, drug.drug_name
+-- ORDER BY prescriber.npi DESC;
+
+SELECT prescriber.npi, drug.drug_name, prescription.total_claim_count
 FROM prescriber
 CROSS JOIN drug
 LEFT JOIN prescription
-ON prescriber.npi = prescription.npi
-WHERE specialty_description iLIKE 'Pain Management'
-	AND nppes_provider_city iLIKE 'NASHVILLE'
-	AND opioid_drug_flag = 'Y'
-GROUP BY prescriber.npi, drug.drug_name; 
+USING(npi, drug_name)
+WHERE prescriber.specialty_description = 'Pain Management' AND
+	prescriber.nppes_provider_city = 'NASHVILLE' AND
+	drug.opioid_drug_flag = 'Y';
     
 --ANSWER Once again, best to run the query
+
 -- c. Finally, if you have not done so already, fill in any missing values for total_claim_count with 0. Hint - Google the COALESCE function.
+
+SELECT prescriber.npi, drug.drug_name,
+ COALESCE(prescription.total_claim_count,0)
+FROM prescriber
+CROSS JOIN drug
+LEFT JOIN prescription
+USING(npi, drug_name)
+WHERE prescriber.specialty_description = 'Pain Management' AND
+	prescriber.nppes_provider_city = 'NASHVILLE' AND
+	drug.opioid_drug_flag = 'Y';
+    
