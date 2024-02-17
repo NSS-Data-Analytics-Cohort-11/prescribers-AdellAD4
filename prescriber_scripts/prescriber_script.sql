@@ -54,7 +54,7 @@ LEFT JOIN prescription
 ON prescriber.npi=prescription.npi
 GROUP BY prescriber.specialty_description
 HAVING SUM(prescription.total_claim_count) IS NULL
-ORDER BY total_claims;
+ORDER BY prescriber.specialty_description;
 
 --ANSWER "Marriage & Family Therapist",
 -- "Contractor",
@@ -69,8 +69,64 @@ ORDER BY total_claims;
 
 -- d. **Difficult Bonus:** *Do not attempt until you have solved all other problems!* For each specialty, report the percentage of total claims by that specialty which are for opioids. Which specialties have a high percentage of opioids?
 
--- WITH claims AS
---  (SELECT prescriber.);
+WITH claims AS
+	(SELECT
+		prescriber.specialty_description,
+		SUM(prescription.total_claim_count) AS total_claims
+	FROM prescriber 
+	INNER JOIN prescription 
+	USING(npi)
+	INNER JOIN drug
+	USING (drug_name)
+	GROUP BY prescriber.specialty_description),
+-- second CTE for total opioid claims
+opioid AS
+	(SELECT
+		prescriber.specialty_description,
+		SUM(prescription.total_claim_count) AS total_opioid
+	FROM prescriber
+	INNER JOIN prescription
+	USING(npi)
+	INNER JOIN drug
+	USING (drug_name)
+	WHERE drug.opioid_drug_flag ='Y'
+	GROUP BY prescriber.specialty_description)
+--main query
+SELECT
+	claims.specialty_description,
+	COALESCE(ROUND((opioid.total_opioid / claims.total_claims * 100),2),0) AS pct_opioid
+FROM claims
+LEFT JOIN opioid
+USING(specialty_description)
+ORDER BY pct_opioid;
+
+--ANSWER: Best to run the query
+			 
+			 
+-- Dibran's Query
+--SELECT
+-- 	specialty_description,
+-- 	SUM(
+-- 		CASE WHEN opioid_drug_flag = 'Y' THEN total_claim_count
+-- 		ELSE 0
+-- 	END
+-- 	) as opioid_claims,
+	
+-- 	SUM(total_claim_count) AS total_claims,
+	
+-- 	SUM(
+-- 		CASE WHEN opioid_drug_flag = 'Y' THEN total_claim_count
+-- 		ELSE 0
+-- 	END
+-- 	) * 100.0 /  SUM(total_claim_count) AS opioid_percentage
+-- FROM prescriber
+-- INNER JOIN prescription
+-- USING(npi)
+-- INNER JOIN drug
+-- USING(drug_name)
+-- GROUP BY specialty_description
+-- --order by specialty_description;
+-- order by opioid_percentage desc			
 
 --3. a. Which drug (generic_name) had the highest total drug cost?
 
@@ -121,11 +177,13 @@ ORDER BY SUM(MONEY(prescription.total_drug_cost));
 
 --5. a. How many CBSAs are in Tennessee? **Warning:** The cbsa table contains information for all states, not just Tennessee.
 
-SELECT COUNT (cbsaname)
+SELECT COUNT (*)
 FROM cbsa
-WHERE cbsaname LIKE '%TN%'
+INNER JOIN fips_county
+USING (fipscounty)
+WHERE state = 'TN'
 
---ANSWER 56
+--ANSWER 42
 
 -- b. Which cbsa has the largest combined population? Which has the smallest? Report the CBSA name and total population.
 
@@ -239,6 +297,8 @@ WHERE specialty_description iLIKE 'Pain Management'
 -- 	drug.opioid_drug_flag = 'Y'
 -- GROUP BY prescriber.npi, drug.drug_name
 -- ORDER BY prescriber.npi DESC;
+
+--I originally had the following query, but thought I needed to sum the total claim count and rewrote the query with a subquery which my computer could not handle. It ran the query for over 16 minutes and I canceled it. Then Matt sent me the query he did with subquery just to see if my computer could handle it and it could not. So I compared the results with what I originally had and went with that one.
 
 SELECT prescriber.npi, drug.drug_name, prescription.total_claim_count
 FROM prescriber
